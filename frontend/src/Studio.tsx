@@ -58,15 +58,7 @@ export default function Studio() {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const { result, busy, model, history, connected } = studio;
-  const models = studio.health?.model_catalog || [
-    {
-      id: "yolo26n.pt",
-      name: "YOLO26 Nano",
-      family: "YOLO26",
-      description: "Lightweight starting point",
-      size: "2.4M",
-    },
-  ];
+  const models = studio.health?.model_catalog || [];
   const selected = models.find((item) => item.id === model) || models[0];
   const classes = [
     ...new Set(result?.detections.map((item) => item.class_name) || []),
@@ -315,16 +307,20 @@ export default function Studio() {
                     <div className="flex items-center justify-between">
                       <Label htmlFor="model">Detection model</Label>
                       <Badge variant="secondary" className="text-[10px]">
-                        {models.length} models
+                        {models.length
+                          ? `${models.length} models`
+                          : "Waiting for server"}
                       </Badge>
                     </div>
                     <Select
                       value={model}
                       onValueChange={studio.setModel}
-                      disabled={!!busy}
+                      disabled={!!busy || !connected}
                     >
                       <SelectTrigger id="model" className="w-full">
-                        <SelectValue>{selected.name}</SelectValue>
+                        <SelectValue>
+                          {selected?.name || "Model list unavailable"}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {[...new Set(models.map((item) => item.family))].map(
@@ -344,10 +340,16 @@ export default function Studio() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs leading-5 text-muted-foreground">
-                      {selected.description}{" "}
-                      <span className="text-foreground/65">
-                        · {selected.size} parameters
-                      </span>
+                      {selected ? (
+                        <>
+                          {selected.description}{" "}
+                          <span className="text-foreground/65">
+                            · {selected.size} parameters
+                          </span>
+                        </>
+                      ) : (
+                        "The server must provide its supported models before testing."
+                      )}
                     </p>
                   </section>
                   <section className="space-y-4">

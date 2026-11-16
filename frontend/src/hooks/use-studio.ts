@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { api, upload } from "@/api";
 import type { Asset, Health, Result } from "@/api";
 
+const OUTDATED_BACKEND =
+  "The running backend is outdated. Restart start-dashboard.ps1 to load the full model list.";
+
 export function useStudio() {
   const [health, setHealth] = useState<Health | null>(null);
   const [connected, setConnected] = useState(false);
@@ -26,10 +29,22 @@ export function useStudio() {
     let active = true;
     const refresh = async () => {
       try {
-        const data = await api<Health>("/api/health");
+        const data = await api<Health>("/api/health", { cache: "no-store" });
         if (active) {
+          if (
+            !Array.isArray(data.model_catalog) ||
+            !data.model_catalog.length
+          ) {
+            setHealth(null);
+            setConnected(false);
+            setError(OUTDATED_BACKEND);
+            return;
+          }
           setHealth(data);
           setConnected(true);
+          setError((previous) =>
+            previous === OUTDATED_BACKEND ? "" : previous,
+          );
         }
       } catch {
         if (active) setConnected(false);

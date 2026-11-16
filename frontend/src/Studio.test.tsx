@@ -106,6 +106,38 @@ describe("appearance", () => {
 });
 
 describe("studio interactions", () => {
+  it("reports an outdated backend instead of inventing a one-model list", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async (path: string) =>
+          new Response(
+            JSON.stringify(
+              path === "/api/health"
+                ? { models: ["yolo26n.pt", "yolo26s.pt"] }
+                : [],
+            ),
+            { status: 200 },
+          ),
+      ),
+    );
+    render(
+      <ThemeProvider>
+        <Studio />
+      </ThemeProvider>,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "running backend is outdated",
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Detection model" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Run detection" }),
+    ).toBeDisabled();
+    expect(screen.queryByText("1 models")).not.toBeInTheDocument();
+    expect(screen.getByText("Model list unavailable")).toBeInTheDocument();
+  });
   it("submits a larger model selection and exposes real exports", async () => {
     const fetchMock = mockApi();
     const user = userEvent.setup();
