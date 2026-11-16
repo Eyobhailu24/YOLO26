@@ -1,0 +1,7 @@
+.venv/
+.ultralytics/
+__pycache__/
+runs/
+datasets/
+models/
+*.pt
