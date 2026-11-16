@@ -1,0 +1,17 @@
+﻿# YOLO26 Vision Studio
+
+React + TypeScript frontend for the local FastAPI detection server.
+
+From the repository root:
+
+```powershell
+npm --prefix frontend ci --include=dev
+npm --prefix frontend run build
+.\.venv\Scripts\python.exe -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
+```
+
+Open http://127.0.0.1:8000. For hot reload, start the API and run
+`npm --prefix frontend run dev`; Vite proxies `/api` to the Python server.
+
+Cloudinary credentials belong in the root `.env`, never frontend environment
+variables. See the root README for setup, tests, storage, and API behavior.

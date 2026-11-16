@@ -1,5 +1,86 @@
 # YOLO26 local testing
 
+## Vision Studio dashboard
+
+A React + TypeScript dashboard and local FastAPI server provide image upload,
+YOLO26 Nano/Small selection, confidence and resolution controls, original versus
+annotated comparison, detection details, image/JSON downloads, and persistent
+SQLite test history. Reopen a saved test to rerun its image with different settings.
+
+Install the dashboard dependencies in the existing environment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-web.txt
+npm --prefix frontend ci --include=dev
+```
+
+Configure Cloudinary by copying `.env.example` to `.env`, then filling in your
+Cloudinary product environment's cloud name, API key, and API secret:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Keep the real `.env` local. It is excluded from Git. Restart the server after
+changing it. All Cloudinary credentials are read only by Python; the API secret
+never enters the browser bundle. The status label means credentials are
+configured; the first real upload verifies connectivity and credential validity.
+
+Launch from this directory:
+
+```powershell
+.\start-dashboard.ps1
+```
+
+Open **http://127.0.0.1:8000**. The launcher builds the frontend and serves both
+the UI and API from one local process. Keep its terminal open; Ctrl+C stops it.
+Use `-SkipBuild` on later launches when the frontend hasn't changed, or `-Port 8001`
+if another app is using port 8000. If PowerShell blocks the script, run the
+equivalent commands directly:
+
+```powershell
+npm --prefix frontend run build
+.\.venv\Scripts\python.exe -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
+```
+
+The sample-image button works without Cloudinary configuration. Your own files
+use signed direct uploads to Cloudinary. The server verifies the returned upload
+signature and project-issued upload authorization, downloads from a derived
+Cloudinary URL, and rejects untrusted identifiers, redirects, unsupported image
+formats, files larger than 10 MB, and images larger than 25 megapixels.
+
+Original uploads stay in your Cloudinary account. Normalized originals,
+annotated images, JSON reports, and SQLite history are stored locally under
+`runs/dashboard/`. Reopening history uses these local images. Failed detection
+does not delete an already uploaded Cloudinary asset; manage Cloudinary assets
+through your own media library. History shows the most recent 50 tests.
+
+The model is loaded on first use and cached. A lock serializes inference across
+requests, and the server uses the existing GPU when available. Prediction timing
+includes preprocessing and postprocessing, and can include backend warm-up on
+the first call. Total processing additionally includes image retrieval, model
+loading, queue waiting, and image writes; it excludes the browser-to-Cloudinary
+upload and HTTP response transfer. These timings aren't a warmed-up benchmark.
+Confidence is a model score; measuring accuracy still requires labeled data.
+
+This server is intended for a single user on loopback. Public hosting needs a
+Python inference service, authentication, access-controlled history, and upload
+quotas. The dashboard doesn't publish or open your local GPU to the internet.
+
+For frontend development, run the API above and `npm --prefix frontend run dev`
+in another terminal. Vite proxies `/api` to port 8000.
+
+Verification commands:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_dashboard.py -q
+npm --prefix frontend run build
+.\.venv\Scripts\python.exe -m pip check
+```
+
+API tests use temporary storage and mock network access and inference. The
+existing command-line tools below continue to work independently of the UI.
+
 Run pretrained object detection on images, videos, and a webcam; evaluate labeled
 data; compare nano and small model speed. All commands below run from this folder
 in PowerShell. No environment activation is required.
