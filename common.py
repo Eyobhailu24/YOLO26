@@ -9,7 +9,7 @@ os.environ.setdefault("YOLO_CONFIG_DIR", str(ROOT / ".ultralytics"))
 
 import torch
 import ultralytics
-from ultralytics import YOLO
+from ultralytics import RTDETR, YOLO
 
 
 def select_device(value="auto"):
@@ -23,10 +23,11 @@ def select_device(value="auto"):
 def load_model(name):
     path = Path(name)
     # Keep official downloaded weights in this project, while accepting custom paths.
-    if path.parent == Path(".") and name.startswith("yolo") and not path.exists():
+    if path.parent == Path(".") and name.startswith(("yolo", "rtdetr")) and not path.exists():
         path = ROOT / "models" / name
         path.parent.mkdir(parents=True, exist_ok=True)
-    return YOLO(str(path))
+    loader = RTDETR if path.stem.startswith("rtdetr") else YOLO
+    return loader(str(path))
 
 
 def environment(device):

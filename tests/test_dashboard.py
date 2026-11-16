@@ -20,6 +20,9 @@ from PIL import Image
 import backend.app as module
 from backend.cloud import Cloud, MAX_BYTES
 from backend.store import Store
+from backend.catalog import MODELS
+from backend.inference import Detector
+from common import torch
 
 
 @pytest.fixture
@@ -36,7 +39,7 @@ def client(tmp_path, monkeypatch):
 def fake_detection(image, model_name, confidence, size):
     return ([{"class_id": 0, "class_name": "person", "confidence": .9,
               "xyxy": [1, 2, 30, 40]}], np.array(image),
-            {"preprocess": 1., "inference": 2., "postprocess": 1.}, 4., False)
+            {"preprocess": 1., "inference": 2., "postprocess": 1.}, 4., False, "cpu")
 
 
 def test_sample_persistence_download_and_rerun(client):
@@ -73,6 +76,52 @@ def test_missing_image_and_cloud_credentials(client):
     health = client.get("/api/health").json()
     assert health["cloudinary_configured"] is False
     assert "secret" not in str(health).lower()
+
+
+@pytest.mark.parametrize("model_name", [model["id"] for model in MODELS])
+def test_supported_detection_models(client, model_name):
+    with patch.object(module.app.state.detector, "predict", side_effect=fake_detection) as detector:
+        response = client.post("/api/predictions", json={"sample": True, "model": model_name})
+    assert response.status_code == 200
+    assert response.json()["model"] == model_name
+    assert response.json()["device"] == "cpu"
+    assert detector.call_args.args[1] == model_name
+
+
+def fake_result():
+    box = SimpleNamespace(cls=SimpleNamespace(item=lambda: 0), conf=SimpleNamespace(item=lambda: .9), xyxy=np.array([[1, 2, 3, 4]]))
+    return SimpleNamespace(boxes=SimpleNamespace(cpu=lambda: [box]), names={0: "person"},
+                           speed={"inference": 1.}, plot=lambda: np.zeros((10, 10, 3), dtype=np.uint8))
+
+
+def test_model_switch_evicts_previous_checkpoint():
+    from unittest.mock import MagicMock
+    detector = Detector("cpu")
+    first = MagicMock()
+    first.predict.return_value = [fake_result()]
+    second = MagicMock()
+    second.predict.return_value = [fake_result()]
+    with patch("backend.inference.load_model", side_effect=[first, second]) as load:
+        detector.predict(Image.new("RGB", (10, 10)), "yolo26n.pt", .25, 640)
+        detector.predict(Image.new("RGB", (10, 10)), "yolo26x.pt", .25, 640)
+    assert list(detector.models) == ["yolo26x.pt"]
+    assert load.call_count == 2
+
+
+def test_gpu_memory_failure_retries_and_caches_on_cpu():
+    from unittest.mock import MagicMock
+    detector = Detector("0")
+    gpu = MagicMock()
+    gpu.predict.side_effect = torch.cuda.OutOfMemoryError("Simulated GPU exhaustion")
+    cpu = MagicMock()
+    cpu.predict.return_value = [fake_result()]
+    with patch("backend.inference.load_model", side_effect=[gpu, cpu]), patch("backend.inference.torch.cuda.synchronize"), patch("backend.inference.torch.cuda.empty_cache"):
+        result = detector.predict(Image.new("RGB", (10, 10)), "yolo26x.pt", .25, 640)
+        again = detector.predict(Image.new("RGB", (10, 10)), "yolo26x.pt", .25, 640)
+    assert result[-1] == again[-1] == "cpu"
+    assert gpu.predict.call_count == 1
+    assert cpu.predict.call_count == 2
+    assert cpu.predict.call_args.kwargs["device"] == "cpu"
 
 
 def test_malformed_and_disallowed_images():

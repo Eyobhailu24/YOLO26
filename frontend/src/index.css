@@ -1,0 +1,106 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+:root {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  --radius: 0.75rem;
+  --background: oklch(0.978 0.004 260);
+  --foreground: oklch(0.22 0.025 260);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.57 0.21 258);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.008 260);
+  --secondary-foreground: oklch(0.32 0.025 260);
+  --muted: oklch(0.95 0.007 260);
+  --muted-foreground: oklch(0.51 0.025 260);
+  --accent: oklch(0.94 0.02 260);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.58 0.22 28);
+  --border: oklch(0.91 0.009 260);
+  --input: oklch(0.88 0.012 260);
+  --ring: var(--primary);
+  color-scheme: light;
+}
+.dark {
+  --background: oklch(0.16 0.014 260);
+  --foreground: oklch(0.94 0.008 260);
+  --card: oklch(0.205 0.016 260);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.235 0.019 260);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.72 0.15 250);
+  --primary-foreground: oklch(0.16 0.025 260);
+  --secondary: oklch(0.27 0.02 260);
+  --secondary-foreground: oklch(0.93 0.008 260);
+  --muted: oklch(0.255 0.016 260);
+  --muted-foreground: oklch(0.69 0.021 260);
+  --accent: oklch(0.29 0.026 260);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.72 0.17 26);
+  --border: oklch(0.31 0.019 260);
+  --input: oklch(0.35 0.025 260);
+  --ring: var(--primary);
+  color-scheme: dark;
+}
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    margin: 0;
+    min-width: 360px;
+  }
+  button:not(:disabled),
+  [role="tab"],
+  [role="menuitem"] {
+    cursor: pointer;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 25%, transparent);
+  }
+}
+.canvas-grid {
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--muted-foreground) 24%, transparent) 0.7px,
+    transparent 0.7px
+  );
+  background-size: 16px 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

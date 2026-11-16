@@ -21,6 +21,7 @@ from common import ROOT, environment, select_device
 from backend.cloud import Cloud, MAX_BYTES
 from backend.inference import Detector
 from backend.store import Store
+from backend.catalog import MODELS, ModelName
 
 load_dotenv(ROOT / ".env")
 DATA = ROOT / "runs" / "dashboard"
@@ -38,7 +39,7 @@ class Asset(BaseModel):
 
 
 class Prediction(BaseModel):
-    model: Literal["yolo26n.pt", "yolo26s.pt"] = "yolo26n.pt"
+    model: ModelName = "yolo26n.pt"
     confidence: float = Field(default=0.25, ge=0.01, le=0.95)
     imgsz: Literal[320, 640, 960] = 640
     sample: bool = False
@@ -80,7 +81,8 @@ app = FastAPI(title="YOLO26 Studio", lifespan=lifespan)
 def health():
     return {"status": "ok", "cloudinary_configured": app.state.cloud.configured,
             "environment": environment(app.state.device),
-            "models": ["yolo26n.pt", "yolo26s.pt"], "max_upload_bytes": MAX_BYTES}
+            "models": [model["id"] for model in MODELS], "model_catalog": MODELS,
+            "max_upload_bytes": MAX_BYTES}
 
 
 @app.post("/api/uploads/signature")
@@ -138,7 +140,7 @@ def predict(request: Prediction):
     image = decode_image(body)
     prediction_id = str(uuid.uuid4())
     try:
-        detections, annotated, speeds, prediction_ms, cold = app.state.detector.predict(
+        detections, annotated, speeds, prediction_ms, cold, actual_device = app.state.detector.predict(
             image, request.model, request.confidence, request.imgsz,
         )
         image.save(MEDIA / f"{prediction_id}-original.jpg", quality=94)
@@ -147,7 +149,7 @@ def predict(request: Prediction):
             "id": prediction_id, "created_at": datetime.now(timezone.utc).isoformat(),
             "filename": filename, "model": request.model, "confidence": request.confidence,
             "imgsz": request.imgsz, "width": image.width, "height": image.height,
-            "device": str(app.state.device), "source": "sample" if request.sample else "history" if request.previous_id else "cloudinary",
+            "device": actual_device, "source": "sample" if request.sample else "history" if request.previous_id else "cloudinary",
             "cloudinary_url": cloud_url,
             "original_url": f"/api/media/{prediction_id}-original.jpg",
             "annotated_url": f"/api/media/{prediction_id}.jpg",

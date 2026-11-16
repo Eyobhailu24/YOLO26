@@ -20,10 +20,20 @@ export type Result = {
   total_ms: number;
   cold_start: boolean;
   source: string;
+  device: string;
+};
+export type ModelInfo = {
+  id: string;
+  name: string;
+  family: string;
+  description: string;
+  size: string;
 };
 export type Health = {
   cloudinary_configured: boolean;
   environment: { hardware: string; device: string };
+  models: string[];
+  model_catalog: ModelInfo[];
 };
 export type Asset = {
   upload_id: string;

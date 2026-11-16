@@ -2,10 +2,26 @@
 
 ## Vision Studio dashboard
 
-A React + TypeScript dashboard and local FastAPI server provide image upload,
-YOLO26 Nano/Small selection, confidence and resolution controls, original versus
+A React + TypeScript dashboard built with shadcn/ui, Radix UI, and Tailwind CSS
+provides persistent Light, Dark, and System appearance settings. Its local
+FastAPI server provides image upload, seven-model selection, confidence and resolution controls, original versus
 annotated comparison, detection details, image/JSON downloads, and persistent
 SQLite test history. Reopen a saved test to rerun its image with different settings.
+The History tab includes filename/model search. Every visible action is connected
+to upload, detection, comparison, exports, history, appearance, or setup.
+
+Available detection models:
+
+| Family | Models | Purpose |
+| --- | --- | --- |
+| YOLO26 | Nano, Small, Medium, Large, XLarge | Explore the speed/capacity trade-off |
+| YOLO11 | Large | Compare a previous YOLO generation |
+| RT-DETR | Large | Compare a transformer-based detector |
+
+All checkpoints use the same 80 COCO detection classes. Weights download on
+first use into `models/`. Model metadata comes from `/api/health`; the server
+restricts requests to the supported checkpoint list. Larger capacity doesn't
+guarantee better results on a particular image.
 
 Install the dashboard dependencies in the existing environment:
 
@@ -55,8 +71,13 @@ annotated images, JSON reports, and SQLite history are stored locally under
 does not delete an already uploaded Cloudinary asset; manage Cloudinary assets
 through your own media library. History shows the most recent 50 tests.
 
-The model is loaded on first use and cached. A lock serializes inference across
-requests, and the server uses the existing GPU when available. Prediction timing
+The active model is loaded on first use and cached. Switching models evicts the
+previous checkpoint to bound memory usage on the 4 GB GPU. A lock serializes
+inference across requests. The server uses the GPU when available; if inference
+runs out of CUDA memory, it reloads the selected checkpoint on CPU and retries.
+The canvas footer and JSON report show the actual execution device. A CPU retry
+is retained for that model until a different model is selected or the server restarts.
+Prediction timing
 includes preprocessing and postprocessing, and can include backend warm-up on
 the first call. Total processing additionally includes image retrieval, model
 loading, queue waiting, and image writes; it excludes the browser-to-Cloudinary
@@ -75,11 +96,19 @@ Verification commands:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests/test_dashboard.py -q
 npm --prefix frontend run build
+npm --prefix frontend test
 .\.venv\Scripts\python.exe -m pip check
 ```
 
 API tests use temporary storage and mock network access and inference. The
-existing command-line tools below continue to work independently of the UI.
+frontend interaction tests cover appearance persistence, larger-model selection,
+exports, Cloudinary setup, and history. They run in jsdom and don't replace
+visual browser testing. Live smoke checks run the sample through all seven models.
+Model references: [YOLO26](https://docs.ultralytics.com/models/yolo26),
+[YOLO11](https://docs.ultralytics.com/models/yolo11), and
+[RT-DETR](https://docs.ultralytics.com/models/rtdetr).
+
+The existing command-line tools below continue to work independently of the UI.
 
 Run pretrained object detection on images, videos, and a webcam; evaluate labeled
 data; compare nano and small model speed. All commands below run from this folder
